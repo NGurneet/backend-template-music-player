@@ -1,0 +1,2 @@
+Rename the env.local file to .env.local
+change path of swagger in index file
