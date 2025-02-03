@@ -3,6 +3,7 @@ import { type IUser } from "./user.dto";
 import UserSchema from "./user.schema";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
+import { sendEmail } from "../common/services/email.service";
 
 /**
  * Creates a new user in the database.
@@ -205,4 +206,64 @@ export const deleteAllRefreshTokensForUser = async (
 ): Promise<any> => {
   const result = await RefreshTokenModel.deleteMany({ userId });
   return result;
+};
+
+export const forgotPassword = async function (
+  email: string,
+  forgotPasswordToken: string,
+  forgotPasswordTokenExpiry: Date | ""
+) {
+  const user = await UserSchema.findOne({ email });
+  if (!user) {
+    throw new Error("User not found");
+  }
+  user.forgotPasswordToken = forgotPasswordToken;
+  user.forgotPasswordTokenExpiry = forgotPasswordTokenExpiry;
+
+  await user.save();
+  const url = `http://localhost:5000/${forgotPasswordToken}`;
+
+  const mailSent = await sendEmail({
+    email,
+    html: "<p>You can reset your password</p>",
+    subject: "Change Password",
+    url,
+  });
+  return mailSent;
+};
+/**
+ * Updates the password for a user using a forgot password token.
+ * @param token - The forgot password token used to identify the user.
+ * @param password - The new password to set for the user.
+ * @returns A promise that resolves to the user object after the password is updated.
+ * @throws {Error} If the token is not found.
+ * @throws {Error} If the password is not provided.
+ * @throws {Error} If the user with the specific token is not found.
+ * @throws {Error} If the token has expired.
+ */
+export const updatePassword = async function (token: string, password: string) {
+  if (!token) {
+    throw new Error("Token not found");
+  }
+  if (!password) {
+    throw new Error("Password is required");
+  }
+  const user = await UserSchema.findOne({ forgotPasswordToken: token }).select(
+    "-password"
+  );
+  if (!user) {
+    throw new Error("User with specific token not found");
+  }
+  const date = new Date();
+
+  if (date > user.forgotPasswordTokenExpiry) {
+    throw new Error("Token Expired");
+  }
+
+  user.forgotPasswordToken = "";
+  user.password = password;
+  user.forgotPasswordTokenExpiry = "";
+  await user.save({ validateBeforeSave: true });
+
+  return user;
 };

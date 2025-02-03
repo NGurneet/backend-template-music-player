@@ -2,6 +2,7 @@ import * as userService from "./user.service";
 import { createResponse } from "../common/helper/response.hepler";
 import asyncHandler from "express-async-handler";
 import { type Request, type Response } from "express";
+import jwt from "jsonwebtoken";
 
 /**
  * Creates a new user by calling the user service.
@@ -211,6 +212,82 @@ export const logoutUser = asyncHandler(
 
     res.json({ message: "Logged out successfully" });
   },
+);
+
+
+/**
+ * Handles forgot password functionality.
+ * @function
+ * @name forgotPassword
+ * @description Handles forgot password functionality by generating a forgot password token and sending it to the user's email.
+ * @param {Request} req - Express request object
+ * @param {Response} res - Express response object
+ * @property {string} email - The email address of the user to send the email to.
+ * @returns {Promise<void>}
+ * @throws {Error} If the forgot password token is not generated successfully.
+ */
+export const forgotPassword = asyncHandler(
+  async (req: Request, res: Response) => {
+    const { email } = req.body;
+    if (!email) {
+      throw new Error("Email is required");
+    }
+
+    const forgotPasswordTokenExpiry = new Date();
+    forgotPasswordTokenExpiry.setHours(
+      forgotPasswordTokenExpiry.getHours() + 1
+    );
+    const forgotPasswordToken = jwt.sign(
+      {
+        email: email,
+      },
+      process.env.JWT_SECRET as string
+    );
+
+    const forget = await userService.forgotPassword(
+      email,
+      forgotPasswordToken,
+      forgotPasswordTokenExpiry
+    );
+
+    if (forget) {
+      res.send(
+        createResponse(forgotPasswordToken, "Email sent successfully to forgot")
+      );
+    } else {
+      throw new Error("Error while forgot password");
+    }
+  }
+);
+
+/**
+ * Updates the password for a user using a forgot password token.
+ * @function
+ * @name updatePassword
+ * @description Updates the password for a user using a forgot password token.
+ * @param {Request} req - Express request object
+ * @param {Response} res - Express response object
+ * @property {string} token - The forgot password token.
+ * @property {string} password - The new password to set for the user.
+ * @returns {Promise<void>}
+ * @throws {Error} If the token is not found.
+ * @throws {Error} If the password is not provided.
+ * @throws {Error} If the user with the specific token is not found.
+ * @throws {Error} If the token has expired.
+ */
+export const updatePassword = asyncHandler(
+  async (req: Request, res: Response) => {
+    const { token, password } = req.body;
+    if (!token) {
+      throw new Error("Token is required");
+    }
+    if (!password) {
+      throw new Error("password is required");
+    }
+    const user = await userService.updatePassword(token, password);
+
+    res.send(createResponse(user, "Password Updated Successfully"));
+  }
 );
 
 // import * as userService from "./user.service";

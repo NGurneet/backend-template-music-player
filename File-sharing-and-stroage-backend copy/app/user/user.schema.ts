@@ -32,6 +32,15 @@ const UserSchema = new Schema<IUser>(
     password: { type: String, required: true },
     likedSongs: { type: [String], required: false, default: [] },
     downloadedSongs: { type: [String], required: false, default: [] },
+    refreshToken: {
+      type: String,
+    },
+    forgotPasswordToken: {
+      type: String,
+    },
+    forgotPasswordTokenExpiry: {
+      type: Date,
+    },
   },
   { timestamps: true },
 );

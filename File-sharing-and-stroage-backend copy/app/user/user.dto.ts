@@ -44,6 +44,10 @@ export interface IUser extends BaseSchema {
    */
   password: string;
 
+  refreshToken?: string;
+  forgotPasswordToken: string;
+  forgotPasswordTokenExpiry: Date | "";
+
   /**
    * A list of IDs of songs liked by the user.
    *
